@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RC Practice Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        h1 { color: #222; }
+        textarea { width: 100%; height: 180px; padding: 10px; font-size: 14px; margin-bottom: 10px; }
+        select, button { padding: 10px; font-size: 14px; margin-right: 10px; }
+        button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        #loading { display: none; color: #666; margin-top: 10px; }
+        .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .option { display: block; padding: 8px; margin: 5px 0; cursor: pointer; border: 1px solid #ddd; border-radius: 4px; }
+        .option:hover { background: #f0f0f0; }
+        .option.selected { background: #dbeafe; border-color: #2563eb; }
+        .option.correct { background: #d1fae5; border-color: #10b981; }
+        .option.incorrect { background: #fee2e2; border-color: #ef4444; }
+        .explanation { margin-top: 10px; padding: 10px; background: #f9fafb; border-left: 3px solid #2563eb; font-size: 14px; display: none; }
+        #score { font-size: 18px; font-weight: bold; margin: 20px 0; display: none; }
+    </style>
+</head>
+<body>
+
+<h1>RC Practice Generator</h1>
+<p>Paste an article below and generate exam-style reading comprehension questions.</p>
+
+<select id="examType">
+    <option value="CAT">CAT</option>
+    <option value="GMAT">GMAT</option>
+    <option value="SBI_PO">SBI PO</option>
+    <option value="IBPS_PO">IBPS PO</option>
+    <option value="UPSC">UPSC</option>
+</select>
+<br><br>
+<textarea id="articleText" placeholder="Paste your article here..."></textarea>
+<br>
+<button onclick="generateQuiz()">Generate Quiz</button>
+<div id="loading">Generating quiz, please wait...</div>
+
+<div id="quizContainer"></div>
+<div id="score"></div>
+<button id="submitBtn" onclick="submitQuiz()" style="display:none;">Submit Answers</button>
+
+<script>
+    let currentQuiz = null;
+    let selectedAnswers = {};
+
+    async function generateQuiz() {
+        const articleText = document.getElementById('articleText').value.trim();
+        const examType = document.getElementById('examType').value;
+
+        if (!articleText) {
+            alert('Please paste an article first.');
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('quizContainer').innerHTML = '';
+        document.getElementById('score').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'none';
+        selectedAnswers = {};
+
+        try {
+            const response = await fetch(`/api/quiz/generate?examType=${examType}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: articleText
+            });
+
+            if (!response.ok) throw new Error('Failed to generate quiz');
+
+            currentQuiz = await response.json();
+            renderQuiz(currentQuiz);
+        } catch (err) {
+            alert('Error generating quiz: ' + err.message);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    function renderQuiz(quiz) {
+        const container = document.getElementById('quizContainer');
+        container.innerHTML = `<p><strong>Summary:</strong> ${quiz.passageSummary}</p>`;
+
+        quiz.questions.forEach((q, qIndex) => {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+
+            let optionsHtml = '';
+            q.options.forEach((opt, optIndex) => {
+                optionsHtml += `<div class="option" id="opt-${qIndex}-${optIndex}" onclick="selectOption(${qIndex}, ${optIndex})">${opt.optionText}</div>`;
+            });
+
+            card.innerHTML = `
+            <p><strong>Q${qIndex + 1} (${q.type}):</strong> ${q.questionText}</p>
+            ${optionsHtml}
+            <div class="explanation" id="explanation-${qIndex}"><strong>Explanation:</strong> ${q.explanation}</div>
+        `;
+            container.appendChild(card);
+        });
+
+        document.getElementById('submitBtn').style.display = 'inline-block';
+    }
+
+    function selectOption(qIndex, optIndex) {
+        selectedAnswers[qIndex] = optIndex;
+        document.querySelectorAll(`#quizContainer .question-card:nth-child(${qIndex + 2}) .option`)
+            .forEach(el => el.classList.remove('selected'));
+        document.getElementById(`opt-${qIndex}-${optIndex}`).classList.add('selected');
+    }
+
+    function submitQuiz() {
+        let correctCount = 0;
+
+        currentQuiz.questions.forEach((q, qIndex) => {
+            const selected = selectedAnswers[qIndex];
+            const correctIndex = q.correctOptionIndex;
+
+            q.options.forEach((opt, optIndex) => {
+                const el = document.getElementById(`opt-${qIndex}-${optIndex}`);
+                el.style.pointerEvents = 'none';
+                if (optIndex === correctIndex) el.classList.add('correct');
+                else if (optIndex === selected) el.classList.add('incorrect');
+            });
+
+            if (selected === correctIndex) correctCount++;
+            document.getElementById(`explanation-${qIndex}`).style.display = 'block';
+        });
+
+        const scoreDiv = document.getElementById('score');
+        scoreDiv.textContent = `Score: ${correctCount} / ${currentQuiz.questions.length}`;
+        scoreDiv.style.display = 'block';
+        document.getElementById('submitBtn').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
