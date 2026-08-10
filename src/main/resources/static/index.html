@@ -7,7 +7,7 @@
         body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
         h1 { color: #222; }
         textarea { width: 100%; height: 180px; padding: 10px; font-size: 14px; margin-bottom: 10px; }
-        select, button { padding: 10px; font-size: 14px; margin-right: 10px; }
+        select, button, input[type=file] { padding: 10px; font-size: 14px; margin-right: 10px; }
         button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background: #1d4ed8; }
         #loading { display: none; color: #666; margin-top: 10px; }
@@ -19,12 +19,21 @@
         .option.incorrect { background: #fee2e2; border-color: #ef4444; }
         .explanation { margin-top: 10px; padding: 10px; background: #f9fafb; border-left: 3px solid #2563eb; font-size: 14px; display: none; }
         #score { font-size: 18px; font-weight: bold; margin: 20px 0; display: none; }
+        .tabs { margin-bottom: 15px; }
+        .tab-btn { padding: 8px 16px; border: 1px solid #ccc; background: white; cursor: pointer; }
+        .tab-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+        #imageUploadSection { display: none; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <h1>RC Practice Generator</h1>
-<p>Paste an article below and generate exam-style reading comprehension questions.</p>
+<p>Paste an article or upload a photo of one to generate exam-style reading comprehension questions.</p>
+
+<div class="tabs">
+    <button class="tab-btn active" id="textTabBtn" onclick="switchTab('text')">Paste Text</button>
+    <button class="tab-btn" id="imageTabBtn" onclick="switchTab('image')">Upload Image</button>
+</div>
 
 <select id="examType">
     <option value="CAT">CAT</option>
@@ -34,7 +43,15 @@
     <option value="UPSC">UPSC</option>
 </select>
 <br><br>
-<textarea id="articleText" placeholder="Paste your article here..."></textarea>
+
+<div id="textInputSection">
+    <textarea id="articleText" placeholder="Paste your article here..."></textarea>
+</div>
+
+<div id="imageUploadSection">
+    <input type="file" id="articleImage" accept="image/*">
+</div>
+
 <br>
 <button onclick="generateQuiz()">Generate Quiz</button>
 <div id="loading">Generating quiz, please wait...</div>
@@ -46,16 +63,18 @@
 <script>
     let currentQuiz = null;
     let selectedAnswers = {};
+    let activeTab = 'text';
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.getElementById('textTabBtn').classList.toggle('active', tab === 'text');
+        document.getElementById('imageTabBtn').classList.toggle('active', tab === 'image');
+        document.getElementById('textInputSection').style.display = tab === 'text' ? 'block' : 'none';
+        document.getElementById('imageUploadSection').style.display = tab === 'image' ? 'block' : 'none';
+    }
 
     async function generateQuiz() {
-        const articleText = document.getElementById('articleText').value.trim();
         const examType = document.getElementById('examType').value;
-
-        if (!articleText) {
-            alert('Please paste an article first.');
-            return;
-        }
-
         document.getElementById('loading').style.display = 'block';
         document.getElementById('quizContainer').innerHTML = '';
         document.getElementById('score').style.display = 'none';
@@ -63,11 +82,35 @@
         selectedAnswers = {};
 
         try {
-            const response = await fetch(`/api/quiz/generate?examType=${examType}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
-                body: articleText
-            });
+            let response;
+
+            if (activeTab === 'text') {
+                const articleText = document.getElementById('articleText').value.trim();
+                if (!articleText) {
+                    alert('Please paste an article first.');
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                response = await fetch(`/api/quiz/generate?examType=${examType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: articleText
+                });
+            } else {
+                const fileInput = document.getElementById('articleImage');
+                if (!fileInput.files.length) {
+                    alert('Please choose an image first.');
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('image', fileInput.files[0]);
+
+                response = await fetch(`/api/quiz/generate-from-image?examType=${examType}`, {
+                    method: 'POST',
+                    body: formData
+                });
+            }
 
             if (!response.ok) throw new Error('Failed to generate quiz');
 
