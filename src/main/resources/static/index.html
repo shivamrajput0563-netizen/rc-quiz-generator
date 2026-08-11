@@ -2,75 +2,485 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RC Practice Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RC Desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
-        h1 { color: #222; }
-        textarea { width: 100%; height: 180px; padding: 10px; font-size: 14px; margin-bottom: 10px; }
-        select, button, input[type=file] { padding: 10px; font-size: 14px; margin-right: 10px; }
-        button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #1d4ed8; }
-        #loading { display: none; color: #666; margin-top: 10px; }
-        .question-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .option { display: block; padding: 8px; margin: 5px 0; cursor: pointer; border: 1px solid #ddd; border-radius: 4px; }
-        .option:hover { background: #f0f0f0; }
-        .option.selected { background: #dbeafe; border-color: #2563eb; }
-        .option.correct { background: #d1fae5; border-color: #10b981; }
-        .option.incorrect { background: #fee2e2; border-color: #ef4444; }
-        .explanation { margin-top: 10px; padding: 10px; background: #f9fafb; border-left: 3px solid #2563eb; font-size: 14px; display: none; }
-        #score { font-size: 18px; font-weight: bold; margin: 20px 0; display: none; }
-        .tabs { margin-bottom: 15px; }
-        .tab-btn { padding: 8px 16px; border: 1px solid #ccc; background: white; cursor: pointer; }
-        .tab-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
-        #imageUploadSection { display: none; margin-bottom: 10px; }
+        :root {
+            --paper: #EDEAE2;
+            --paper-dark: #E2DED2;
+            --ink: #22262B;
+            --ink-soft: #5B5E62;
+            --pen: #C1440E;
+            --pen-soft: #F1DCD0;
+            --check: #3C7A5E;
+            --cross: #B23A48;
+            --rule: #C9C3B4;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--paper);
+            color: var(--ink);
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+            line-height: 1.5;
+        }
+
+        .masthead {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .masthead h1 {
+            font-family: 'Newsreader', serif;
+            font-weight: 700;
+            font-style: italic;
+            font-size: 2.1rem;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        #statsDisplay {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            white-space: nowrap;
+        }
+
+        .rule {
+            border: none;
+            border-top: 2px solid var(--ink);
+            margin: 0 0 3px;
+        }
+        .rule.thin {
+            border-top: 1px solid var(--rule);
+            margin: 0 0 24px;
+        }
+
+        .subhead {
+            font-size: 0.95rem;
+            color: var(--ink-soft);
+            margin: 0 0 28px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .tab-group { display: flex; gap: 20px; }
+
+        .tab-btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: none;
+            border: none;
+            padding: 6px 0;
+            color: var(--ink-soft);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            color: var(--ink);
+            border-bottom-color: var(--pen);
+        }
+        .tab-btn:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
+            outline: 2px solid var(--pen);
+            outline-offset: 2px;
+        }
+
+        select#examType {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            background: var(--paper-dark);
+            border: 1px solid var(--rule);
+            border-radius: 999px;
+            padding: 8px 16px;
+            color: var(--ink);
+            cursor: pointer;
+        }
+
+        .archive-item {
+            padding: 12px 4px;
+            border-bottom: 1px solid var(--rule);
+            cursor: pointer;
+        }
+        .archive-item:hover { background: rgba(0,0,0,0.03); }
+        .archive-date {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--pen);
+            display: block;
+            margin-bottom: 3px;
+        }
+        .archive-summary {
+            font-family: 'Newsreader', serif;
+            font-style: italic;
+            font-size: 0.92rem;
+            color: var(--ink-soft);
+        }
+
+        #textInputSection, #imageUploadSection {
+            border: 1.5px dashed var(--rule);
+            background: var(--paper-dark);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 170px;
+            border: none;
+            background: transparent;
+            resize: vertical;
+            font-family: 'Newsreader', serif;
+            font-size: 1.05rem;
+            color: var(--ink);
+            padding: 0;
+        }
+        textarea::placeholder { color: var(--ink-soft); font-style: italic; }
+        textarea:focus { outline: none; }
+
+        input[type=file] {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            color: var(--ink-soft);
+        }
+
+        #imageUploadSection { display: none; }
+
+        button#generateBtn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: var(--ink);
+            color: var(--paper);
+            border: none;
+            border-radius: 4px;
+            padding: 13px 22px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        button#generateBtn:hover { background: var(--pen); }
+
+        #loading {
+            display: none;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            margin-top: 14px;
+        }
+        #loading::after {
+            content: '';
+            animation: dots 1.2s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; }
+        }
+
+        .editors-note {
+            border-left: 3px solid var(--pen);
+            background: var(--paper-dark);
+            padding: 14px 18px;
+            margin: 32px 0 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        .passage-text {
+            background: var(--paper-dark);
+            padding: 18px 20px;
+            margin: 32px 0 16px;
+            border-radius: 4px;
+            border: 1px solid var(--rule);
+        }
+        .passage-text p {
+            font-family: 'Newsreader', serif;
+            font-size: 1rem;
+            line-height: 1.65;
+            color: var(--ink);
+            margin: 0;
+        }
+        .eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--pen);
+            display: block;
+            margin-bottom: 4px;
+        }
+        .editors-note p {
+            font-family: 'Newsreader', serif;
+            font-style: italic;
+            font-size: 0.98rem;
+            margin: 0;
+            color: var(--ink);
+        }
+
+        .question-card {
+            background: var(--paper-dark);
+            border-top: 1px solid var(--rule);
+            padding: 22px 4px;
+            opacity: 0;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        .q-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            margin-bottom: 6px;
+        }
+        .q-meta strong { color: var(--pen); }
+
+        .q-text {
+            font-family: 'Newsreader', serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            margin: 0 0 16px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 4px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .option:hover { background: rgba(0,0,0,0.03); }
+
+        .bubble {
+            flex: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1.5px solid var(--ink-soft);
+            position: relative;
+            transition: transform 0.12s ease;
+        }
+        .option.selected .bubble {
+            border-color: var(--pen);
+            background: var(--pen);
+        }
+        .option.correct .bubble {
+            border-color: var(--check);
+            background: var(--check);
+        }
+        .option.incorrect .bubble {
+            border-color: var(--cross);
+            background: var(--cross);
+        }
+        .option-text { font-size: 0.98rem; }
+
+        .explanation {
+            display: none;
+            border-left: 3px solid var(--pen);
+            margin-top: 14px;
+            padding: 10px 16px;
+            background: rgba(193, 68, 14, 0.05);
+            border-radius: 0 4px 4px 0;
+        }
+        .explanation p {
+            font-family: 'Newsreader', serif;
+            font-style: italic;
+            font-size: 0.92rem;
+            color: var(--ink-soft);
+            margin: 0;
+        }
+
+        #submitBtn {
+            display: none;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: var(--pen);
+            color: var(--paper);
+            border: none;
+            border-radius: 4px;
+            padding: 13px 22px;
+            cursor: pointer;
+            margin-top: 24px;
+        }
+
+        #score {
+            display: none;
+            width: fit-content;
+            border: 2px solid var(--ink);
+            border-radius: 6px;
+            padding: 14px 24px;
+            margin: 28px 0;
+            transform: rotate(-1.5deg);
+        }
+        #score .eyebrow { margin-bottom: 2px; }
+        #score .score-value {
+            font-family: 'Newsreader', serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .question-card { animation: none; opacity: 1; }
+            #loading::after { animation: none; content: '...'; }
+        }
+
+        @media (max-width: 480px) {
+            .masthead { flex-direction: column; align-items: flex-start; }
+            .tabs { flex-direction: column; align-items: flex-start; }
+        }
     </style>
 </head>
 <body>
 
-<h1>RC Practice Generator</h1>
-<p>Paste an article or upload a photo of one to generate exam-style reading comprehension questions.</p>
+<div class="masthead">
+    <h1>RC Desk</h1>
+    <span id="statsDisplay"></span>
+</div>
+<hr class="rule"><hr class="rule thin">
+<p class="subhead">Turn any article into an exam-style comprehension set.</p>
 
 <div class="tabs">
-    <button class="tab-btn active" id="textTabBtn" onclick="switchTab('text')">Paste Text</button>
-    <button class="tab-btn" id="imageTabBtn" onclick="switchTab('image')">Upload Image</button>
+    <div class="tab-group">
+        <button class="tab-btn active" id="textTabBtn" onclick="switchTab('text')">Paste text</button>
+        <button class="tab-btn" id="imageTabBtn" onclick="switchTab('image')">Upload clipping</button>
+        <button class="tab-btn" id="dailyTabBtn" onclick="switchTab('daily')">RC of the day</button>
+    </div>
+    <select id="examType">
+        <option value="CAT">CAT</option>
+        <option value="GMAT">GMAT</option>
+        <option value="SBI_PO">SBI PO</option>
+        <option value="IBPS_PO">IBPS PO</option>
+        <option value="UPSC">UPSC</option>
+    </select>
 </div>
 
-<select id="examType">
-    <option value="CAT">CAT</option>
-    <option value="GMAT">GMAT</option>
-    <option value="SBI_PO">SBI PO</option>
-    <option value="IBPS_PO">IBPS PO</option>
-    <option value="UPSC">UPSC</option>
-</select>
-<br><br>
-
 <div id="textInputSection">
-    <textarea id="articleText" placeholder="Paste your article here..."></textarea>
+    <textarea id="articleText" placeholder="Paste an editorial, essay, or article…"></textarea>
 </div>
 
 <div id="imageUploadSection">
     <input type="file" id="articleImage" accept="image/*">
 </div>
+<div id="dailySection" style="display:none;">
+    <p style="font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--ink-soft);">
+        Today's passage, picked for you. No pasting required.
+        <a href="#" onclick="showArchive(); return false;" style="color: var(--pen); text-decoration: underline;">Browse past days</a>
+    </p>
+</div>
+<div id="archiveSection" style="display:none;">
+    <p class="eyebrow">Past passages</p>
+    <div id="archiveList"></div>
+</div>
 
-<br>
-<button onclick="generateQuiz()">Generate Quiz</button>
-<div id="loading">Generating quiz, please wait...</div>
+<button id="generateBtn" onclick="generateQuiz()">Generate quiz</button>
+<div id="loading">Reading passage</div>
 
 <div id="quizContainer"></div>
 <div id="score"></div>
-<button id="submitBtn" onclick="submitQuiz()" style="display:none;">Submit Answers</button>
+<button id="submitBtn" onclick="submitQuiz()">Submit answers</button>
 
 <script>
     let currentQuiz = null;
     let selectedAnswers = {};
     let activeTab = 'text';
 
+    let sessionId = localStorage.getItem('rc_session_id');
+    if (!sessionId) {
+        sessionId = 'sess-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('rc_session_id', sessionId);
+    }
+
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/quiz/stats/today');
+            const data = await res.json();
+            document.getElementById('statsDisplay').textContent = `${data.quizzesToday} passages marked today`;
+        } catch (e) {
+            console.log('Stats unavailable');
+        }
+    }
+    loadStats();
+
+    async function showArchive() {
+        document.getElementById('quizContainer').innerHTML = '';
+        document.getElementById('score').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'none';
+        document.getElementById('archiveSection').style.display = 'block';
+
+        const res = await fetch('/api/quiz/daily/archive');
+        const passages = await res.json();
+
+        const listEl = document.getElementById('archiveList');
+        if (!passages.length) {
+            listEl.innerHTML = '<p>No past passages yet.</p>';
+            return;
+        }
+
+        listEl.innerHTML = passages.map(p => {
+            const date = new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            return `
+            <div class="archive-item" onclick="loadArchivedPassage(${p.passageId})">
+                <span class="archive-date">${date}</span>
+                <span class="archive-summary">${p.passageSummary.substring(0, 90)}...</span>
+            </div>`;
+        }).join('');
+    }
+
+    async function loadArchivedPassage(passageId) {
+        document.getElementById('archiveSection').style.display = 'none';
+        document.getElementById('loading').style.display = 'block';
+
+        const res = await fetch('/api/quiz/daily/archive');
+        const passages = await res.json();
+        const passage = passages.find(p => p.passageId === passageId);
+
+        document.getElementById('loading').style.display = 'none';
+        if (passage) {
+            currentQuiz = passage;
+            renderQuiz(passage);
+        }
+    }
+
     function switchTab(tab) {
         activeTab = tab;
         document.getElementById('textTabBtn').classList.toggle('active', tab === 'text');
         document.getElementById('imageTabBtn').classList.toggle('active', tab === 'image');
+        document.getElementById('dailyTabBtn').classList.toggle('active', tab === 'daily');
         document.getElementById('textInputSection').style.display = tab === 'text' ? 'block' : 'none';
         document.getElementById('imageUploadSection').style.display = tab === 'image' ? 'block' : 'none';
+        document.getElementById('dailySection').style.display = tab === 'daily' ? 'block' : 'none';
+        document.getElementById('generateBtn').style.display = tab === 'daily' ? 'none' : 'inline-block';
+
+        if (tab === 'daily') {
+            generateQuiz();
+        }
     }
 
     async function generateQuiz() {
@@ -87,19 +497,19 @@
             if (activeTab === 'text') {
                 const articleText = document.getElementById('articleText').value.trim();
                 if (!articleText) {
-                    alert('Please paste an article first.');
+                    alert('Paste an article first.');
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
                 response = await fetch(`/api/quiz/generate?examType=${examType}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
+                    headers: { 'Content-Type': 'text/plain', 'X-Session-Id': sessionId },
                     body: articleText
                 });
-            } else {
+            } else if (activeTab === 'image') {
                 const fileInput = document.getElementById('articleImage');
                 if (!fileInput.files.length) {
-                    alert('Please choose an image first.');
+                    alert('Choose an image first.');
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
@@ -108,16 +518,32 @@
 
                 response = await fetch(`/api/quiz/generate-from-image?examType=${examType}`, {
                     method: 'POST',
+                    headers: { 'X-Session-Id': sessionId },
                     body: formData
                 });
             }
+        else if (activeTab === 'daily') {
+            response = await fetch('/api/quiz/daily');
+            if (response.ok) {
+                const data = await response.json();
+                if (!data) throw new Error('No RC posted yet today — check back soon.');
+                currentQuiz = data;
+                renderQuiz(currentQuiz);
+                document.getElementById('loading').style.display = 'none';
+                return;
+            } else {
+                throw new Error('Could not load today\'s RC.');
+            }
+        }
 
-            if (!response.ok) throw new Error('Failed to generate quiz');
+
+            if (!response.ok) throw new Error('Could not generate a quiz from that. Try clearer text or a sharper photo.');
 
             currentQuiz = await response.json();
             renderQuiz(currentQuiz);
+            loadStats();
         } catch (err) {
-            alert('Error generating quiz: ' + err.message);
+            alert(err.message);
         } finally {
             document.getElementById('loading').style.display = 'none';
         }
@@ -125,21 +551,39 @@
 
     function renderQuiz(quiz) {
         const container = document.getElementById('quizContainer');
-        container.innerHTML = `<p><strong>Summary:</strong> ${quiz.passageSummary}</p>`;
+        container.innerHTML = `
+        <div class="passage-text">
+            <span class="eyebrow">Passage</span>
+            <p>${quiz.cleanedText}</p>
+        </div>
+        <div class="editors-note">
+            <span class="eyebrow">Editor's note</span>
+            <p>${quiz.passageSummary}</p>
+        </div>
+    `;
 
         quiz.questions.forEach((q, qIndex) => {
             const card = document.createElement('div');
             card.className = 'question-card';
+            card.style.animationDelay = (qIndex * 0.06) + 's';
 
             let optionsHtml = '';
             q.options.forEach((opt, optIndex) => {
-                optionsHtml += `<div class="option" id="opt-${qIndex}-${optIndex}" onclick="selectOption(${qIndex}, ${optIndex})">${opt.optionText}</div>`;
+                optionsHtml += `
+                <div class="option" id="opt-${qIndex}-${optIndex}" onclick="selectOption(${qIndex}, ${optIndex})">
+                    <span class="bubble"></span>
+                    <span class="option-text">${opt.optionText}</span>
+                </div>`;
             });
 
             card.innerHTML = `
-            <p><strong>Q${qIndex + 1} (${q.type}):</strong> ${q.questionText}</p>
+            <div class="q-meta">Q${qIndex + 1} &nbsp;·&nbsp; <strong>${q.type}</strong></div>
+            <p class="q-text">${q.questionText}</p>
             ${optionsHtml}
-            <div class="explanation" id="explanation-${qIndex}"><strong>Explanation:</strong> ${q.explanation}</div>
+            <div class="explanation" id="explanation-${qIndex}">
+                <span class="eyebrow">Note</span>
+                <p>${q.explanation}</p>
+            </div>
         `;
             container.appendChild(card);
         });
@@ -149,9 +593,10 @@
 
     function selectOption(qIndex, optIndex) {
         selectedAnswers[qIndex] = optIndex;
-        document.querySelectorAll(`#quizContainer .question-card:nth-child(${qIndex + 2}) .option`)
-            .forEach(el => el.classList.remove('selected'));
-        document.getElementById(`opt-${qIndex}-${optIndex}`).classList.add('selected');
+        document.querySelectorAll(`#opt-${qIndex}-0, #opt-${qIndex}-1, #opt-${qIndex}-2, #opt-${qIndex}-3`)
+            .forEach(el => el && el.classList.remove('selected'));
+        const el = document.getElementById(`opt-${qIndex}-${optIndex}`);
+        if (el) el.classList.add('selected');
     }
 
     function submitQuiz() {
@@ -173,7 +618,10 @@
         });
 
         const scoreDiv = document.getElementById('score');
-        scoreDiv.textContent = `Score: ${correctCount} / ${currentQuiz.questions.length}`;
+        scoreDiv.innerHTML = `
+        <span class="eyebrow">Result</span>
+        <div class="score-value">${correctCount} / ${currentQuiz.questions.length}</div>
+    `;
         scoreDiv.style.display = 'block';
         document.getElementById('submitBtn').style.display = 'none';
     }

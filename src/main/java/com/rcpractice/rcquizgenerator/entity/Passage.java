@@ -30,10 +30,17 @@ public class Passage {
     private String examType;
 
 
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+
+    private boolean isDailyRc = false;
+
+    public boolean isDailyRc() { return isDailyRc; }
+    public void setDailyRc(boolean dailyRc) { isDailyRc = dailyRc; }
 
     // Getters and setters
     public Long getPassageId() { return passageId; }
@@ -48,4 +55,10 @@ public class Passage {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<Question> getQuestions() { return questions; }
     public void setQuestions(List<Question> questions) { this.questions = questions; }
+
+
+    private String sessionId;
+
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
 }

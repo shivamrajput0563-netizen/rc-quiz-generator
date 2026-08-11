@@ -34,8 +34,15 @@ public class GeminiApiService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
 
-    public Passage generateQuiz(String examType, String articleText) throws Exception {
+    public Passage generateDailyRc(String examType, String articleText) throws Exception {
+        Passage passage = generateQuiz(examType, articleText, null); // sessionId not relevant for admin uploads
+        passage.setDailyRc(true);
+        return passageRepository.save(passage);
+    }
+
+    public Passage generateQuiz(String examType, String articleText, String sessionId) throws Exception {
         String prompt = promptFactory.buildPrompt(examType, articleText);
         QuizResponse quizResponse = null;
         int maxRetries = 3;
@@ -70,7 +77,7 @@ public class GeminiApiService {
             throw new RuntimeException("Quiz generation failed after all retries.");
         }
 
-        return convertAndSave(examType, articleText, quizResponse);
+        return convertAndSave(examType, articleText, quizResponse, sessionId);
     }
 
     private QuizResponse callGeminiAndParse(String prompt) throws Exception {
@@ -91,8 +98,9 @@ public class GeminiApiService {
         return objectMapper.readValue(quizJson, QuizResponse.class);
     }
 
-    private Passage convertAndSave(String examType, String articleText, QuizResponse quizResponse) {
+    private Passage convertAndSave(String examType, String articleText, QuizResponse quizResponse, String sessionId) {
         Passage passage = new Passage();
+        passage.setSessionId(sessionId);
         passage.setExamType(examType);
         passage.setCleanedText(articleText);
         passage.setPassageSummary(quizResponse.getPassageSummary());
