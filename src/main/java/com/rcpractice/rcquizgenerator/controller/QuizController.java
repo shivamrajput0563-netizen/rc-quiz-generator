@@ -1,4 +1,5 @@
 package com.rcpractice.rcquizgenerator.controller;
+import org.springframework.http.ResponseEntity;
 
 import com.rcpractice.rcquizgenerator.entity.Passage;
 import com.rcpractice.rcquizgenerator.repository.PassageRepository;
@@ -7,6 +8,7 @@ import com.rcpractice.rcquizgenerator.service.OcrService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import  com.rcpractice.rcquizgenerator.service.ArticleFetcherService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +31,23 @@ public class QuizController {
     @Autowired
     private PassageRepository passageRepository;
 
+    @Autowired
+    private ArticleFetcherService articleFetcherService;
+
+    @PostMapping("/generate-from-url")
+    public ResponseEntity<?> generateQuizFromUrl(
+            @RequestParam String examType,
+            @RequestBody String url,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+        try {
+            String extractedText = articleFetcherService.extractArticleText(url.trim());
+            Passage passage = geminiApiService.generateQuiz(examType, extractedText, sessionId);
+            return ResponseEntity.ok(passage);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/generate")
     public Passage generateQuiz(
             @RequestParam String examType,
@@ -50,8 +69,9 @@ public class QuizController {
     @GetMapping("/stats/today")
     public Map<String, Long> getTodayStats() {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        long count = passageRepository.countGeneratedSince(startOfDay);
-        return Map.of("quizzesToday", count);
+        long todayCount = passageRepository.countGeneratedSince(startOfDay);
+        long totalCount = passageRepository.count(); // built-in method, no new query needed
+        return Map.of("quizzesToday", todayCount, "quizzesTotal", totalCount);
     }
     @GetMapping("/daily")
     public Passage getTodaysDailyRc() {
@@ -63,6 +83,7 @@ public class QuizController {
     public List<Passage> getDailyRcArchive() {
         return passageRepository.findAllDailyRcHistory();
     }
+
 
 
 }

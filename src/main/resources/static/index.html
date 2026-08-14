@@ -223,6 +223,31 @@
             color: var(--ink);
             margin: 0;
         }
+
+        .passage-text .eyebrow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toggle-passage {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: none;
+            border: 1px solid var(--pen);
+            color: var(--pen);
+            border-radius: 999px;
+            padding: 3px 10px;
+            cursor: pointer;
+        }
+        #passageContent.collapsed {
+            max-height: 120px;
+            overflow: hidden;
+            position: relative;
+            mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        }
         .eyebrow {
             font-family: 'IBM Plex Mono', monospace;
             font-size: 0.68rem;
@@ -371,6 +396,7 @@
         <button class="tab-btn active" id="textTabBtn" onclick="switchTab('text')">Paste text</button>
         <button class="tab-btn" id="imageTabBtn" onclick="switchTab('image')">Upload clipping</button>
         <button class="tab-btn" id="dailyTabBtn" onclick="switchTab('daily')">RC of the day</button>
+        <button class="tab-btn" id="urlTabBtn" onclick="switchTab('url')">Paste link</button>
     </div>
     <select id="examType">
         <option value="CAT">CAT</option>
@@ -393,6 +419,10 @@
         Today's passage, picked for you. No pasting required.
         <a href="#" onclick="showArchive(); return false;" style="color: var(--pen); text-decoration: underline;">Browse past days</a>
     </p>
+</div>
+<div id="urlInputSection" style="display:none;">
+    <input type="text" id="articleUrl" placeholder="https://example.com/article"
+           style="width:100%; padding:10px; font-family:'Inter',sans-serif; font-size:0.95rem; border:1px solid var(--rule); border-radius:4px; background:var(--paper-dark);">
 </div>
 <div id="archiveSection" style="display:none;">
     <p class="eyebrow">Past passages</p>
@@ -421,7 +451,7 @@
         try {
             const res = await fetch('/api/quiz/stats/today');
             const data = await res.json();
-            document.getElementById('statsDisplay').textContent = `${data.quizzesToday} passages marked today`;
+            document.getElementById('statsDisplay').textContent = `${data.quizzesToday} today · ${data.quizzesTotal} total`;
         } catch (e) {
             console.log('Stats unavailable');
         }
@@ -467,15 +497,16 @@
             renderQuiz(passage);
         }
     }
-
     function switchTab(tab) {
         activeTab = tab;
         document.getElementById('textTabBtn').classList.toggle('active', tab === 'text');
         document.getElementById('imageTabBtn').classList.toggle('active', tab === 'image');
         document.getElementById('dailyTabBtn').classList.toggle('active', tab === 'daily');
+        document.getElementById('urlTabBtn').classList.toggle('active', tab === 'url');
         document.getElementById('textInputSection').style.display = tab === 'text' ? 'block' : 'none';
         document.getElementById('imageUploadSection').style.display = tab === 'image' ? 'block' : 'none';
         document.getElementById('dailySection').style.display = tab === 'daily' ? 'block' : 'none';
+        document.getElementById('urlInputSection').style.display = tab === 'url' ? 'block' : 'none';
         document.getElementById('generateBtn').style.display = tab === 'daily' ? 'none' : 'inline-block';
 
         if (tab === 'daily') {
@@ -513,6 +544,7 @@
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
+
                 const formData = new FormData();
                 formData.append('image', fileInput.files[0]);
 
@@ -521,7 +553,20 @@
                     headers: { 'X-Session-Id': sessionId },
                     body: formData
                 });
+            } else if (activeTab === 'url') {
+                const articleUrl = document.getElementById('articleUrl').value.trim();
+                if (!articleUrl) {
+                    alert('Paste a link first.');
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                response = await fetch(`/api/quiz/generate-from-url?examType=${examType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain', 'X-Session-Id': sessionId },
+                    body: articleUrl
+                });
             }
+
         else if (activeTab === 'daily') {
             response = await fetch('/api/quiz/daily');
             if (response.ok) {
@@ -537,7 +582,18 @@
         }
 
 
-            if (!response.ok) throw new Error('Could not generate a quiz from that. Try clearer text or a sharper photo.');
+            if (!response.ok) {
+                let errorMessage = 'Could not generate a quiz from that. Try clearer text or a sharper photo.';
+                try {
+                    const errorData = await response.json();
+                    if (errorData && (errorData.message || errorData.error)) {
+                        errorMessage = errorData.message || errorData.error;
+                    }
+                } catch (e) {
+                    // response wasn't JSON, fall back to the generic message
+                }
+                throw new Error(errorMessage);
+            }
 
             currentQuiz = await response.json();
             renderQuiz(currentQuiz);
@@ -552,15 +608,15 @@
     function renderQuiz(quiz) {
         const container = document.getElementById('quizContainer');
         container.innerHTML = `
-        <div class="passage-text">
-            <span class="eyebrow">Passage</span>
-            <p>${quiz.cleanedText}</p>
-        </div>
-        <div class="editors-note">
-            <span class="eyebrow">Editor's note</span>
-            <p>${quiz.passageSummary}</p>
-        </div>
-    `;
+    <div class="passage-text" id="passageTextBlock">
+        <span class="eyebrow">Passage <button class="toggle-passage" onclick="togglePassage()" id="toggleBtn">Show full text</button></span>
+        <p id="passageContent" class="collapsed">${quiz.cleanedText}</p>
+    </div>
+    <div class="editors-note">
+        <span class="eyebrow">Editor's note</span>
+        <p>${quiz.passageSummary}</p>
+    </div>
+`;
 
         quiz.questions.forEach((q, qIndex) => {
             const card = document.createElement('div');
@@ -624,6 +680,12 @@
     `;
         scoreDiv.style.display = 'block';
         document.getElementById('submitBtn').style.display = 'none';
+    }
+    function togglePassage() {
+        const content = document.getElementById('passageContent');
+        const btn = document.getElementById('toggleBtn');
+        const isCollapsed = content.classList.toggle('collapsed');
+        btn.textContent = isCollapsed ? 'Show full text' : 'Hide';
     }
 </script>
 
