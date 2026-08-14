@@ -440,6 +440,7 @@
     let currentQuiz = null;
     let selectedAnswers = {};
     let activeTab = 'text';
+    let lastInputWasImage = false;
 
     let sessionId = localStorage.getItem('rc_session_id');
     if (!sessionId) {
@@ -526,6 +527,7 @@
             let response;
 
             if (activeTab === 'text') {
+                lastInputWasImage = false;
                 const articleText = document.getElementById('articleText').value.trim();
                 if (!articleText) {
                     alert('Paste an article first.');
@@ -538,6 +540,7 @@
                     body: articleText
                 });
             } else if (activeTab === 'image') {
+                lastInputWasImage = true;
                 const fileInput = document.getElementById('articleImage');
                 if (!fileInput.files.length) {
                     alert('Choose an image first.');
@@ -554,6 +557,7 @@
                     body: formData
                 });
             } else if (activeTab === 'url') {
+                lastInputWasImage = false;
                 const articleUrl = document.getElementById('articleUrl').value.trim();
                 if (!articleUrl) {
                     alert('Paste a link first.');
@@ -568,6 +572,7 @@
             }
 
         else if (activeTab === 'daily') {
+                lastInputWasImage = false;
             response = await fetch('/api/quiz/daily');
             if (response.ok) {
                 const data = await response.json();
@@ -607,17 +612,24 @@
 
     function renderQuiz(quiz) {
         const container = document.getElementById('quizContainer');
-        container.innerHTML = `
-    <div class="passage-text" id="passageTextBlock">
-        <span class="eyebrow">Passage <button class="toggle-passage" onclick="togglePassage()" id="toggleBtn">Show full text</button></span>
-        <p id="passageContent" class="collapsed">${quiz.cleanedText}</p>
-    </div>
-    <div class="editors-note">
-        <span class="eyebrow">Editor's note</span>
-        <p>${quiz.passageSummary}</p>
-    </div>
-`;
 
+        let passageHtml = '';
+        if (!lastInputWasImage) {
+            passageHtml = `
+            <div class="passage-text" id="passageTextBlock">
+                <span class="eyebrow">Passage <button class="toggle-passage" onclick="togglePassage()" id="toggleBtn">Show full text</button></span>
+                <p id="passageContent" class="collapsed">${quiz.cleanedText}</p>
+            </div>
+        `;
+        }
+
+        container.innerHTML = `
+        ${passageHtml}
+        <div class="editors-note">
+            <span class="eyebrow">Editor's note</span>
+            <p>${quiz.passageSummary}</p>
+        </div>
+    `;
         quiz.questions.forEach((q, qIndex) => {
             const card = document.createElement('div');
             card.className = 'question-card';
